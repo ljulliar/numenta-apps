@@ -37,6 +37,9 @@ const ARTIFACT_URL = `https://ci.numenta.com/browse/UN-UN/latestSuccessful/artif
 
 // portable_python location based on platform
 const PORTABLE_PYTHON_LOCATIONS = {
+  linux:{
+    x64: path.join(__dirname, 'linux-x64')
+  },
   darwin:{
     x64: path.join(__dirname, 'OSX')
   },

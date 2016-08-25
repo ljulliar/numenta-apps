@@ -38,7 +38,7 @@ import databaseClient from './lib/HTMStudio/DatabaseClient';
 import fileClient from './lib/HTMStudio/FileClient';
 import FileDetailsStore from './stores/FileDetailsStore';
 import FileStore from './stores/FileStore';
-import GoogleAnalytics from './lib/analytics/GoogleAnalytics';
+import GoogleAnalytics from './lib/Analytics/GoogleAnalytics';
 import HTMStudioPlugin from './lib/Fluxible/HTMStudioPlugin';
 import MainComponent from './components/Main';
 import MetricDataStore from './stores/MetricDataStore';
