@@ -29,8 +29,8 @@ set -o errexit
 set -o pipefail
 set -o xtrace
 
-#LJ OSX_VERSION=$(sw_vers -productVersion | awk -F '.' '{print $1 "." $2}')
-#LJ echo "==> System version: $OSX_VERSION"
+LINUX_VERSION=$(lsb_release -ds)
+echo "==> System version: $LINUX_VERSION"
 PYTHON_SH="Miniconda-latest-Linux-x86_64.sh"
 CAPNP="capnproto-c++-0.5.3"
 WORKING_DIR=${PWD}
@@ -72,7 +72,6 @@ bash $PYTHON_SH -b -p $PREFIX
 
 echo "--> Updating 'libpython' shared library search path"
 patchelf --set-rpath  '$ORIGIN/../lib' $PREFIX/lib/libpython2.7.so
-#LJ for OSX : install_name_tool -id  @executable_path/../lib/libpython2.7.dylib $PREFIX/lib/libpython2.7.dylib
 
 echo "==> Downloading Capnp ..."
 curl -O https://capnproto.org/$CAPNP.tar.gz
@@ -80,7 +79,9 @@ curl -O https://capnproto.org/$CAPNP.tar.gz
 echo "==> Installing Capnp ..."
 tar zxf $CAPNP.tar.gz
 pushd $CAPNP
-./configure --disable-shared --prefix=$PREFIX
+#LJ ./configure --disable-shared --prefix=$PREFIX
+#LJ Impossible to compile pycapnp later if --disable-shared is activated 
+./configure --prefix=$PREFIX
 make -j6 check && make install
 popd
 
@@ -94,8 +95,10 @@ git clone https://github.com/numenta/nupic.git
 (cd "${NUPIC}" && git reset --hard "${NUPIC_VER}")
 
 # Override the nupic bindings version required (this is the one with 
-# the gcc >= 4.9 fix in the makefiles)
-sed -i'' 's/nupic.bindings==0.4.0/nupic.bindings==0.4.5.dev0/' ${NUPIC}/external/common/requirements.txt
+# the gcc >= 4.9 fix in the makefiles. Required for Ubuntu 16.04 and
+# harmless for Ubuntu 14.04)
+sed -i'' 's/nupic.bindings==0.4.0/nupic.bindings==0.4.5/' ${NUPIC}/external/common/requirements.txt
+sed -i'' 's/c1a9b9f2d1b9dcc96d88a148bd54e7fe7330bc37/9ee7d7db664f9a05242bf11a6562b640978717a5/' ${NUPIC_MODULES}
 
 echo "==> Getting nupic.core committish from ${NUPIC_MODULES}"
 NUPIC_CORE_COMMITISH=$(grep "^NUPIC_CORE_COMMITISH =" "${NUPIC_MODULES}" | cut -d "'" -f 2)
@@ -103,21 +106,14 @@ echo "Got nupic.core commitish: ${NUPIC_CORE_COMMITISH}"
 
 echo "==> Cloning nupic.core at commitish ${NUPIC_CORE_COMMITISH} ..."
 git clone https://github.com/numenta/nupic.core.git
-#LJ (cd "${NUPIC_CORE}" && git reset --hard "${NUPIC_CORE_COMMITISH}")
-
-#LJ echo "==> Applying fix from commit 2349B2e (Fixes AR and RANLIB for gcc >= 4.9) ..."
-#LJ (cd "${NUPIC_CORE}" && git format-patch --stdout -1 2349b2e56fa811f904961f896a2f502e3c98b8c9 | git apply)
-#LJ (cd "${NUPIC_CORE}" && cp /tmp/CMakeLists.txt.new src/CMakeLists.txt)
+(cd "${NUPIC_CORE}" && git reset --hard "${NUPIC_CORE_COMMITISH}")
 
 echo "==> Installing nupic.core requirements ..."
 rm -rf $NUPIC_CORE/build
 mkdir -p $NUPIC_CORE/build/scripts
 $PREFIX/bin/pip install -r $NUPIC_CORE/bindings/py/requirements.txt --no-cache-dir
-# Install pycapnp since it is not in nupic.core requirements.txt.
-# Note: to install pycapnpn on Yosemite you have to set MACOSX_DEPLOYMENT_TARGET.
-# More on this issue: https://github.com/numenta/nupic/issues/2061
-#LJ export MACOSX_DEPLOYMENT_TARGET=$OSX_VERSION
-#LJ $PREFIX/bin/pip install pycapnp --no-cache-dir
+
+$PREFIX/bin/pip install pycapnp --no-cache-dir
 
 echo "==> Building nupic.core ..."
 pushd $NUPIC_CORE/build/scripts
